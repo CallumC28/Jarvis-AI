@@ -1,0 +1,14 @@
+.worktrees/
+models/
+__pycache__/
+*.pyc
+.claude/
+docs/
+.env
+# Personal data now lives in %LOCALAPPDATA%\Jarvis; old copies must never be committed
+data/
+*.egg-info/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/

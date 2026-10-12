@@ -3,12 +3,17 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import webbrowser
 from typing import Annotated
 from urllib.parse import quote_plus
 
 from semantic_kernel.functions import kernel_function
 
 logger = logging.getLogger(__name__)
+
+# The site name comes from the model, which may have read untrusted web content, so anything
+# that could break out of a URL (quotes, whitespace, shell metacharacters) is never opened as one.
+_UNSAFE_URL_CHARS = frozenset("\"'<>^`|\\ \t\r\n")
 
 _CHROME_CANDIDATES: list[str] = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
@@ -55,13 +60,13 @@ def _find_chrome() -> str | None:
 
 def _resolve_url(site: str) -> str:
     s = site.strip()
-    if s.startswith(("http://", "https://")):
+    if s.startswith(("http://", "https://")) and not _UNSAFE_URL_CHARS.intersection(s):
         return s
     key = s.lower()
     if key in _KNOWN_SITES:
         return _KNOWN_SITES[key]
     # Looks like a bare domain (e.g. "bbc.co.uk", "github.com")
-    if "." in s and " " not in s:
+    if "." in s and not _UNSAFE_URL_CHARS.intersection(s):
         return f"https://{s}"
     # Fall back to Google search
     return f"https://www.google.com/search?q={quote_plus(s)}"
@@ -89,8 +94,9 @@ class BrowserPlugin:
             if chrome:
                 subprocess.Popen([chrome, url])
             else:
-                # Chrome not found at known paths — use Windows shell to launch it
-                subprocess.Popen(f'start chrome "{url}"', shell=True)
+                # Chrome not found at known paths: use the default browser (no shell involved)
+                webbrowser.open(url)
+                return f"Opened {url} in your default browser."
             return f"Opened {url} in Chrome."
         except Exception as exc:
             logger.exception("Failed to open Chrome.")

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from home_agent.plugins.browser import _resolve_url
+import pytest
+
+from home_agent.plugins import browser
+from home_agent.plugins.browser import BrowserPlugin, _resolve_url
 
 
 def test_full_https_url_passthrough() -> None:
@@ -39,3 +42,36 @@ def test_unknown_phrase_falls_back_to_google_search() -> None:
 
 def test_whitespace_is_stripped() -> None:
     assert _resolve_url("  youtube  ") == "https://www.youtube.com"
+
+
+@pytest.mark.parametrize(
+    "site",
+    [
+        'https://x.com" & calc & "',
+        "https://x.com|calc",
+        "https://x.com/<script>",
+        "https://example.com/a b",
+        'evil.com"&calc',
+    ],
+)
+def test_unsafe_urls_become_a_search(site: str) -> None:
+    assert _resolve_url(site).startswith("https://www.google.com/search?q=")
+
+
+def test_query_string_ampersand_still_allowed() -> None:
+    url = "https://example.com/search?a=1&b=2"
+    assert _resolve_url(url) == url
+
+
+def test_fallback_without_chrome_never_uses_a_shell(monkeypatch: pytest.MonkeyPatch) -> None:
+    opened: list[str] = []
+    monkeypatch.setattr(browser, "_find_chrome", lambda: None)
+    monkeypatch.setattr(browser.webbrowser, "open", opened.append)
+
+    def no_popen(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("subprocess must not be used without Chrome")
+
+    monkeypatch.setattr(browser.subprocess, "Popen", no_popen)
+    result = BrowserPlugin().open_website("https://example.com")
+    assert opened == ["https://example.com"]
+    assert "default browser" in result

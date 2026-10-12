@@ -98,8 +98,8 @@ More detailed design notes are in [CLAUDE.md](CLAUDE.md).
 
 1. **Clone the repo and create a virtual environment:**
    ```bash
-   git clone https://github.com/CallumC28/Jarvis.git
-   cd Jarvis
+   git clone https://github.com/CallumC28/Jarvis-AI.git
+   cd Jarvis-AI
    python -m venv .venv
    .venv\Scripts\activate
    ```
